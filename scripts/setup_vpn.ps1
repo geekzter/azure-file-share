@@ -1,6 +1,25 @@
 #!/usr/bin/env pwsh
-#Requires -Version 7
-
+#requires -Version 7
+function AzLogin (
+    [parameter(Mandatory=$false)][switch]$DisplayMessages=$false
+) {
+    # Azure CLI
+    Invoke-Command -ScriptBlock {
+        $private:ErrorActionPreference = "Continue"
+        # Test whether we are logged in
+        $script:loginError = $(az account show -o none 2>&1)
+        if (!$loginError) {
+            $script:userType = $(az account show --query "user.type" -o tsv)
+            if ($userType -ieq "user") {
+                # Test whether credentials have expired
+                $Script:userError = $(az ad signed-in-user show -o none 2>&1)
+            } 
+        }
+    }
+    if ($loginError -or $userError) {
+        az login -o none
+    }
+}
 if (!$IsMacOS) {
     Write-Error "This only runs on MacOS, exiting"
     exit
@@ -9,7 +28,8 @@ if (!$IsMacOS) {
 # Get configuration
 $terraformDirectory = (Join-Path (Get-Item (Split-Path -parent -Path $MyInvocation.MyCommand.Path)).Parent.FullName "terraform")
 Push-Location $terraformDirectory
-$certPassword = $(terraform output cert_password)
+$certPassword = $(terraform output cert_password  2>$null)
+$gatewayId    = $(terraform output gateway_id     2>$null)
 Pop-Location
 
 $certificateDirectory = (Join-Path (Get-Item (Split-Path -parent -Path $MyInvocation.MyCommand.Path)).Parent.FullName "certificates")
@@ -55,6 +75,33 @@ if (Test-Path $certificateDirectory/client_cert.p12) {
     exit
 }
 
+# Download VPN package
+AzLogin
+if ($gatewayId) {
+    $vpnPackageUrl = $(az network vnet-gateway vpn-client generate --ids $gatewayId --authentication-method EAPTLS -o tsv)
+
+    # Download VPN Profile
+    Write-Host "Downloading VPN profile..."
+    $packageFile = New-TemporaryFile
+    Invoke-WebRequest -UseBasicParsing -Uri $vpnPackageUrl -OutFile $packageFile
+    $tempPackagePath = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+    $null = New-Item -ItemType "directory" -Path $tempPackagePath
+    # Extract package archive
+    Expand-Archive -Path $packageFile -DestinationPath $tempPackagePath
+    $vpnProfileFile = Join-Path $tempPackagePath Generic VpnSettings.xml
+    Write-Verbose "VPN Profile is ${vpnProfileFile}"
+
+    # Locate VPN Server setting
+    $vpnProfileXml = [xml](Get-Content $vpnProfileFile)
+    $serverNode = $vpnProfileXml.SelectSingleNode("//*[name()='VpnServer']")
+    $vpnServer = $serverNode.InnerText
+    Write-Host "VPN Server is $vpnServer"
+    Write-Verbose "VPN Server is $vpnServer"
+
+
+} else {
+    Write-Warning "Gateway not found, have you run 'terraform apply' yet?"    
+}
 
 # Configure VPN
 
