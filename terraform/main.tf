@@ -56,10 +56,18 @@ resource azurerm_storage_container backup_container {
   depends_on                   = [azurerm_storage_account_network_rules.file_storage_rules]
 }
 
+resource azurerm_storage_share file_share {
+  name                         = "share"
+  storage_account_name         = azurerm_storage_account.file_storage.name
+  quota                        = 4096
+
+  depends_on                   = [azurerm_storage_account_network_rules.file_storage_rules]
+}
+
 resource azurerm_private_dns_zone zone {
   for_each                     = {
     blob                       = "privatelink.blob.core.windows.net"
-    files                      = "privatelink.files.core.windows.net"
+    file                       = "privatelink.file.core.windows.net"
   }
   name                         = each.value
   resource_group_name          = azurerm_resource_group.rg.name
@@ -89,13 +97,27 @@ resource azurerm_private_endpoint storage_endpoint {
   tags                         = local.tags
 }
 
-# resource azurerm_storage_share file_share {
-#   name                         = "backup"
-#   storage_account_name         = azurerm_storage_account.file_storage.name
-#   quota                        = 4096
+resource azurerm_private_endpoint file_share_endpoint {
+  name                         = "${azurerm_storage_account.file_storage.name}-file-endpoint"
+  resource_group_name          = azurerm_resource_group.rg.name
+  location                     = azurerm_resource_group.rg.location
+  
+  subnet_id                    = module.vnet.subnet_ids["paas"]
 
-#   depends_on                   = [azurerm_storage_account_network_rules.file_storage_rules]
-# }
+  private_dns_zone_group {
+    name                       = azurerm_private_dns_zone.zone["file"].name
+    private_dns_zone_ids       = [azurerm_private_dns_zone.zone["file"].id]
+  }
+
+  private_service_connection {
+    is_manual_connection       = false
+    name                       = "${azurerm_storage_account.file_storage.name}-file-endpoint-connection"
+    private_connection_resource_id = azurerm_storage_account.file_storage.id
+    subresource_names          = ["file"]
+  }
+
+  tags                         = local.tags
+}
 
 module vnet {
   source                       = "./modules/virtual-network"
