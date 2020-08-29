@@ -60,13 +60,12 @@ resource null_resource root_cert_private_pem_file {
 
 resource tls_self_signed_cert root_cert {
   allowed_uses                 = [
-                                "key_encipherment",
-                                "digital_signature",
-                                "server_auth",
+                                "cert_signing",
                                 "client_auth",
-                                "cert_signing"
+                                "digital_signature",
+                                "key_encipherment",
+                                "server_auth",
   ]
-  dns_names                    = [azurerm_public_ip.vpn_pip.domain_name_label]
   early_renewal_hours          = 200
   is_ca_certificate            = true
   key_algorithm                = tls_private_key.root_cert.algorithm
