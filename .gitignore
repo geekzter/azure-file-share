@@ -15,6 +15,7 @@ terraform.log
 
 # Certificates
 *.cer
+*.der
 *.p12
 *.pfx
 *.pem

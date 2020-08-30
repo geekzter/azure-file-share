@@ -96,11 +96,13 @@ if ($gatewayId) {
     Write-Verbose "OpenVPN Profile is ${openVPNProfileFile}"
 
 
-    #(Get-Content $openVPNProfileFile) -replace '\$CLIENTCERTIFICATE',($clientCert -replace "$","`n") | Out-File $openVPNProfileFile
-    #(Get-Content $openVPNProfileFile) -replace '\$PRIVATEKEY',${clientKey}         | Out-File $openVPNProfileFile
+    (Get-Content $openVPNProfileFile) -replace '\$CLIENTCERTIFICATE',($clientCert -replace "$","`n") | Out-File $openVPNProfileFile
+    (Get-Content $openVPNProfileFile) -replace '\$PRIVATEKEY',($clientKey -replace "$","`n")         | Out-File $openVPNProfileFile
+
+    # TODO: Add DNS
+    # dhcp-option DNS 10.1.2.3
 
     Write-Verbose "OpenVPN Profile:`n$(Get-Content $openVPNProfileFile -Raw)"
-    #Write-Verbose "OpenVPN Profile:`n$((Get-Content $openVPNProfileFile) -replace "$","`n")"
 
 
     # $ikev2ProfileFile = Join-Path $tempPackagePath Generic VpnSettings.xml

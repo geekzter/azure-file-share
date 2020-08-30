@@ -1,3 +1,7 @@
+variable admin_username {
+  default                      = "admin"
+}
+
 variable location {
   default                      = "westeurope"
 }
@@ -36,6 +40,10 @@ variable client_cert_public_pem_file {
 }
 variable client_cert_private_pem_file {
   default                      = "../certificates/client_cert_private.pem"
+}
+
+variable ssh_public_key {
+  default                      = "~/.ssh/id_rsa.pub"
 }
 
 variable storage_subnet {

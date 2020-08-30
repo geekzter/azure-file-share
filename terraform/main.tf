@@ -10,8 +10,21 @@ resource random_string suffix {
   special                      = false
 }
 
+# Random password generator
+resource random_string password {
+  length                       = 12
+  upper                        = true
+  lower                        = true
+  number                       = true
+  special                      = true
+# override_special             = "!@#$%&*()-_=+[]{}<>:?" # default
+# Avoid characters that may cause shell scripts to break
+  override_special             = "." 
+}
+
 # These variables will be used throughout the Terraform templates
 locals {
+  password                     = ".Az9${random_string.password.result}"
   tags                         = merge(
     var.tags,
   )
@@ -129,8 +142,25 @@ module vnet {
   private_dns_zones            = [for z in azurerm_private_dns_zone.zone : z.name]
   virtual_network              = "${azurerm_resource_group.rg.name}-network"
   subnets                      = {
+    mgmt                       = var.vdc_config["vnet_mgmt_subnet"]
     paas                       = var.vdc_config["vnet_paas_subnet"]
   }
+}
+
+module dns_vm {
+  source                       = "./modules/dns-server"
+
+  user_name                    = var.admin_username
+  user_password                = local.password
+  diagnostics                  = false
+  #diagnostics_storage_id       = azurerm_storage_account.diagnostics_storage.id
+  name                         = "dnsserver"
+  ssh_public_key               = var.ssh_public_key
+  resource_group_name          = azurerm_resource_group.rg.name
+  vm_size                      = "Standard_D2s_v3"
+  vm_subnet_id                 = module.vnet.subnet_ids["mgmt"]
+
+  tags                         = local.tags
 }
 
 module vpn {
