@@ -191,7 +191,10 @@ resource azurerm_virtual_network_gateway vpn_gw {
       public_cert_data         = data.local_file.root_cert_der_file.content_base64
     # public_cert_data         = base64encode(tls_locally_signed_cert.client_cert.cert_pem)
     }
-    vpn_client_protocols       = ["IkeV2"]
+    vpn_client_protocols       = [
+                                  "IkeV2",
+                                  "OpenVPN"
+                                 ]
   }
 
   tags                         = var.tags

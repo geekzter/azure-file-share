@@ -29,6 +29,8 @@ if (!$IsMacOS) {
 $terraformDirectory = (Join-Path (Get-Item (Split-Path -parent -Path $MyInvocation.MyCommand.Path)).Parent.FullName "terraform")
 Push-Location $terraformDirectory
 $certPassword = $(terraform output cert_password  2>$null)
+$clientCert   = $(terraform output client_cert    2>$null)
+$clientKey    = $(terraform output client_key     2>$null)
 $gatewayId    = $(terraform output gateway_id     2>$null)
 Pop-Location
 
@@ -88,27 +90,44 @@ if ($gatewayId) {
     $null = New-Item -ItemType "directory" -Path $tempPackagePath
     # Extract package archive
     Expand-Archive -Path $packageFile -DestinationPath $tempPackagePath
-    $vpnProfileFile = Join-Path $tempPackagePath Generic VpnSettings.xml
-    Write-Verbose "VPN Profile is ${vpnProfileFile}"
+    Write-Verbose "Package extracted at $tempPackagePath"
 
-    # Locate VPN Server setting
-    $vpnProfileXml = [xml](Get-Content $vpnProfileFile)
-    $serverNode = $vpnProfileXml.SelectSingleNode("//*[name()='VpnServer']")
-    $vpnServer = $serverNode.InnerText
-    Write-Host "VPN Server is $vpnServer"
-    Write-Verbose "VPN Server is $vpnServer"
+    $openVPNProfileFile = Join-Path $tempPackagePath OpenVPN vpnconfig.ovpn
+    Write-Verbose "OpenVPN Profile is ${openVPNProfileFile}"
 
+
+    #(Get-Content $openVPNProfileFile) -replace '\$CLIENTCERTIFICATE',($clientCert -replace "$","`n") | Out-File $openVPNProfileFile
+    #(Get-Content $openVPNProfileFile) -replace '\$PRIVATEKEY',${clientKey}         | Out-File $openVPNProfileFile
+
+    Write-Verbose "OpenVPN Profile:`n$(Get-Content $openVPNProfileFile -Raw)"
+    #Write-Verbose "OpenVPN Profile:`n$((Get-Content $openVPNProfileFile) -replace "$","`n")"
+
+
+    # $ikev2ProfileFile = Join-Path $tempPackagePath Generic VpnSettings.xml
+    # Write-Verbose "IKEv2 Profile is ${ikev2ProfileFile}"
+    # # Locate VPN Server setting
+    # $ikev2ProfileXml = [xml](Get-Content $ikev2ProfileFile)
+    # $serverNode = $ikev2ProfileXml.SelectSingleNode("//*[name()='VpnServer']")
+    # $vpnServer = $serverNode.InnerText
+    # Write-Host "VPN Server is $vpnServer"
 
 } else {
     Write-Warning "Gateway not found, have you run 'terraform apply' yet?"    
 }
 
 # Configure VPN
-
+# AppleScript???
+# https://apple.stackexchange.com/questions/128297/how-to-create-a-vpn-connection-via-terminal/228582
+# https://docs.microsoft.com/en-us/azure/vpn-gateway/point-to-site-vpn-client-configuration-azure-cert#installmac
+# https://raw.githubusercontent.com/MacMiniVault/Mac-Scripts/master/vpnscript/vpnscript.sh
+# strongswan?
+# macosvpn?
+# https://gist.github.com/iloveitaly/462760
+#osascript (Join-Path (Split-Path -parent -Path $MyInvocation.MyCommand.Path) "setup_vpn.applescript")
 
 
 # Connect VPN
-
+# networksetup -connectpppoeservice "geekzter VPN"
 
 
 # Mount File share

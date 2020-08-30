@@ -5,8 +5,8 @@
 brew "azure-cli"
 cask "powershell"
 
-# Certificates
-brew "strongswan"
+# VPN
+cask "tunnelblick" # OpenVPn client
 
 # Visual Studio Code
 cask "visual-studio-code"
